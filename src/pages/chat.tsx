@@ -158,8 +158,9 @@ export default function ChatPage() {
   const handleLogout = async () => {
     try {
       await logout();
-      router.push('/');
+      router.replace('/');  // Using replace to prevent back navigation to the chat page
     } catch (error) {
+      console.error('Failed to logout:', error);
       toast.error('Failed to logout');
     }
   };

@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { useTheme } from 'next-themes';
 import { SunIcon, MoonIcon } from '@heroicons/react/24/outline';
 import { useRouter } from 'next/router';
+import { toast } from 'react-hot-toast';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -25,6 +26,7 @@ export default function Layout({ children }: LayoutProps) {
       router.push('/');
     } catch (error) {
       console.error('Failed to logout:', error);
+      toast.error('Failed to logout');
     }
   };
 
