@@ -1,0 +1,430 @@
+openapi: 3.0.3
+info:
+  title: ''
+  version: 0.0.0
+paths:
+  /api/schema/:
+    get:
+      operationId: schema_retrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+
+        - YAML: application/vnd.oai.openapi
+        - JSON: application/vnd.oai.openapi+json
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - json
+          - yaml
+      - in: query
+        name: lang
+        schema:
+          type: string
+          enum:
+          - af
+          - ar
+          - ar-dz
+          - ast
+          - az
+          - be
+          - bg
+          - bn
+          - br
+          - bs
+          - ca
+          - ckb
+          - cs
+          - cy
+          - da
+          - de
+          - dsb
+          - el
+          - en
+          - en-au
+          - en-gb
+          - eo
+          - es
+          - es-ar
+          - es-co
+          - es-mx
+          - es-ni
+          - es-ve
+          - et
+          - eu
+          - fa
+          - fi
+          - fr
+          - fy
+          - ga
+          - gd
+          - gl
+          - he
+          - hi
+          - hr
+          - hsb
+          - hu
+          - hy
+          - ia
+          - id
+          - ig
+          - io
+          - is
+          - it
+          - ja
+          - ka
+          - kab
+          - kk
+          - km
+          - kn
+          - ko
+          - ky
+          - lb
+          - lt
+          - lv
+          - mk
+          - ml
+          - mn
+          - mr
+          - ms
+          - my
+          - nb
+          - ne
+          - nl
+          - nn
+          - os
+          - pa
+          - pl
+          - pt
+          - pt-br
+          - ro
+          - ru
+          - sk
+          - sl
+          - sq
+          - sr
+          - sr-latn
+          - sv
+          - sw
+          - ta
+          - te
+          - tg
+          - th
+          - tk
+          - tr
+          - tt
+          - udm
+          - ug
+          - uk
+          - ur
+          - uz
+          - vi
+          - zh-hans
+          - zh-hant
+      tags:
+      - schema
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/vnd.oai.openapi:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/yaml:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/vnd.oai.openapi+json:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/create/:
+    post:
+      operationId: v1_create_create
+      description: Create a new user in the system.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/v1/delete/:
+    delete:
+      operationId: v1_delete_destroy
+      tags:
+      - v1
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/health/:
+    get:
+      operationId: v1_health_retrieve
+      tags:
+      - v1
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/login/:
+    post:
+      operationId: v1_login_create
+      description: Create a new auth token for user.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AuthTokenRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AuthTokenRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthTokenRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthToken'
+          description: ''
+  /api/v1/logout/:
+    post:
+      operationId: v1_logout_create
+      description: Handle logout process and disable the notifications
+      tags:
+      - v1
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/me/:
+    get:
+      operationId: v1_me_retrieve
+      description: Manage the authenticated user.
+      tags:
+      - v1
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    put:
+      operationId: v1_me_update
+      description: Manage the authenticated user.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: v1_me_partial_update
+      description: Manage the authenticated user.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRequest'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+components:
+  schemas:
+    AuthToken:
+      type: object
+      description: Serializer for the user auth token.
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+      - email
+      - password
+    AuthTokenRequest:
+      type: object
+      description: Serializer for the user auth token.
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+      required:
+      - email
+      - password
+    PatchedUserRequest:
+      type: object
+      description: Serializer for the user object.
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 255
+        password:
+          type: string
+          writeOnly: true
+          minLength: 6
+          maxLength: 128
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        full_address:
+          type: string
+          minLength: 1
+        phone_number:
+          type: string
+          minLength: 1
+          maxLength: 15
+    User:
+      type: object
+      description: Serializer for the user object.
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        full_name:
+          type: string
+          maxLength: 255
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        full_address:
+          type: string
+        phone_number:
+          type: string
+          maxLength: 15
+      required:
+      - email
+    UserRequest:
+      type: object
+      description: Serializer for the user object.
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 255
+        password:
+          type: string
+          writeOnly: true
+          minLength: 6
+          maxLength: 128
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        full_address:
+          type: string
+          minLength: 1
+        phone_number:
+          type: string
+          minLength: 1
+          maxLength: 15
+      required:
+      - email
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+    tokenAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: Token-based authentication with required prefix "Token"
