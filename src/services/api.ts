@@ -105,6 +105,7 @@ export const userAPI = {
 export interface Session {
   session_id: string;
   first_message: string;
+  created_at: string;
 }
 
 export interface ChatMessage {
@@ -124,9 +125,29 @@ export const chatAPI = {
     try {
       const response = await api.get('/api/v1/sessions/');
       console.log('Sessions response:', response.data);
-      return response.data;
+      
+      // Sort sessions by created_at, most recent first
+      const sortedSessions = response.data.sort((a: Session, b: Session) => {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+      
+      return sortedSessions;
     } catch (error) {
       console.error('Failed to get sessions:', error);
+      throw error;
+    }
+  },
+
+  // Delete a session
+  deleteSession: async (sessionId: string): Promise<void> => {
+    try {
+      console.log('Deleting session:', sessionId);
+      await api.delete('/api/v1/sessions/', { 
+        data: { session_id: sessionId }
+      });
+      console.log('Session deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete session:', error);
       throw error;
     }
   },

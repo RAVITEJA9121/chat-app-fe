@@ -1,3 +1,32 @@
 @tailwind base;
 @tailwind components;
-@tailwind utilities; 
+@tailwind utilities;
+
+:root {
+  --toast-bg: 54, 54, 54;
+  --toast-color: 255, 255, 255;
+  --brightness-overlay: 0;
+}
+
+.dark {
+  --toast-bg: 55, 65, 81;
+  --toast-color: 255, 255, 255;
+}
+
+* {
+  transition-property: background-color, border-color, color, fill, stroke, opacity;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.brightness-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background-color: rgba(0, 0, 0, var(--brightness-overlay));
+  z-index: 9999;
+  transition: background-color 0.2s ease-in-out;
+} 
