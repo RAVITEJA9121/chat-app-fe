@@ -14,7 +14,7 @@
 }
 
 * {
-  transition-property: background-color, border-color, color, fill, stroke, opacity;
+  transition-property: background-color, border-color, color, fill, stroke;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
 }
@@ -27,6 +27,6 @@
   bottom: 0;
   pointer-events: none;
   background-color: rgba(0, 0, 0, var(--brightness-overlay));
-  z-index: 9999;
+  z-index: 50;
   transition: background-color 0.2s ease-in-out;
 } 

@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import { chatAPI, type Session, type ChatMessage } from '@/services/api';
-import { Menu, Transition } from '@headlessui/react';
-import { Fragment } from 'react';
 import { UserCircleIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
 import { useTheme } from 'next-themes';
@@ -20,12 +18,22 @@ export default function ChatPage() {
   const [updateKey, setUpdateKey] = useState(0);
   const [brightness, setBrightness] = useState(0);
   const [mounted, setMounted] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const { theme, setTheme, resolvedTheme } = useTheme();
 
   // Handle mounting
   useEffect(() => {
     setMounted(true);
+    // Add click outside listener for dropdown
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -40,7 +48,7 @@ export default function ChatPage() {
     if (mounted && resolvedTheme === 'dark') {
       document.documentElement.style.setProperty(
         '--brightness-overlay',
-        String(brightness / 100 * 0.5)
+        String(brightness / 100 * 0.7)
       );
     } else {
       document.documentElement.style.setProperty('--brightness-overlay', '0');
@@ -150,7 +158,7 @@ export default function ChatPage() {
   const handleLogout = async () => {
     try {
       await logout();
-      router.push('/login');
+      router.push('/');
     } catch (error) {
       toast.error('Failed to logout');
     }
@@ -231,213 +239,201 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="h-screen flex bg-gray-50 dark:bg-gray-900">
-      {/* Sidebar */}
-      <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Chat History</h2>
-          <button
-            onClick={() => {
-              setCurrentSession(null);
-              setMessages([]);
-            }}
-            className="px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 transition-colors"
-          >
-            New Chat
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
-          {sessions.map((session) => (
+    <>
+      <div className="brightness-overlay" />
+      <div className="h-screen flex bg-gray-50 dark:bg-gray-900">
+        {/* Sidebar */}
+        <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Chat History</h2>
             <button
-              key={session.session_id}
-              onClick={() => handleSessionClick(session.session_id)}
-              className={`w-full p-4 text-left rounded-lg transition-colors ${
-                currentSession === session.session_id
-                  ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700'
-                  : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300'
-              }`}
+              onClick={() => {
+                setCurrentSession(null);
+                setMessages([]);
+              }}
+              className="px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 transition-colors"
             >
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <p className="text-sm font-medium line-clamp-2">{session.first_message}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {new Date(session.created_at).toLocaleString(undefined, {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </p>
-                </div>
-                <button
-                  onClick={(e) => handleDeleteSession(session.session_id, e)}
-                  className="ml-2 p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-500 rounded focus:outline-none"
-                  title="Delete session"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-              </div>
+              New Chat
             </button>
-          ))}
-          {sessions.length === 0 && (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              <p>No chat history yet</p>
-              <p className="text-sm">Start a new chat to begin</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div className="flex-1 flex flex-col bg-white dark:bg-gray-800">
-        {/* Header */}
-        <div className="h-16 border-b border-gray-200 dark:border-gray-700 px-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-gray-800 dark:text-white">
-            {currentSession ? 'Chat Session' : 'New Chat'}
-          </h1>
-          <div className="flex items-center space-x-4">
-            {renderThemeToggle()}
-            <Menu as="div" className="relative">
-              <Menu.Button className="flex items-center space-x-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
-                {user?.avatar_url ? (
-                  <img
-                    src={user.avatar_url}
-                    alt={user.full_name}
-                    className="h-8 w-8 rounded-full"
-                  />
-                ) : (
-                  <UserCircleIcon className="h-8 w-8" />
-                )}
-                <span className="text-sm font-medium">{user?.full_name}</span>
-              </Menu.Button>
-              <Transition
-                as={Fragment}
-                enter="transition ease-out duration-100"
-                enterFrom="transform opacity-0 scale-95"
-                enterTo="transform opacity-100 scale-100"
-                leave="transition ease-in duration-75"
-                leaveFrom="transform opacity-100 scale-100"
-                leaveTo="transform opacity-0 scale-95"
+          </div>
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            {sessions.map((session) => (
+              <button
+                key={session.session_id}
+                onClick={() => handleSessionClick(session.session_id)}
+                className={`w-full p-4 text-left rounded-lg transition-colors ${
+                  currentSession === session.session_id
+                    ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700'
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300'
+                }`}
               >
-                <Menu.Items className="absolute right-0 mt-2 w-48 origin-top-right bg-white dark:bg-gray-700 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none divide-y divide-gray-100 dark:divide-gray-600">
-                  <div className="py-1">
-                    <Menu.Item>
-                      {({ active }) => (
-                        <button
-                          onClick={() => router.push('/dashboard')}
-                          className={`${
-                            active 
-                              ? 'bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white' 
-                              : 'text-gray-700 dark:text-gray-300'
-                          } flex items-center w-full px-4 py-2 text-sm`}
-                        >
-                          Profile Settings
-                        </button>
-                      )}
-                    </Menu.Item>
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium line-clamp-2">{session.first_message}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {new Date(session.created_at).toLocaleString(undefined, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
                   </div>
-                  <div className="py-1">
-                    <Menu.Item>
-                      {({ active }) => (
-                        <button
-                          onClick={handleLogout}
-                          className={`${
-                            active 
-                              ? 'bg-gray-50 dark:bg-gray-600 text-red-700 dark:text-red-400' 
-                              : 'text-red-600 dark:text-red-500'
-                          } flex items-center w-full px-4 py-2 text-sm`}
-                        >
-                          Logout
-                        </button>
-                      )}
-                    </Menu.Item>
-                  </div>
-                </Menu.Items>
-              </Transition>
-            </Menu>
+                  <button
+                    onClick={(e) => handleDeleteSession(session.session_id, e)}
+                    className="ml-2 p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-500 rounded focus:outline-none"
+                    title="Delete session"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              </button>
+            ))}
+            {sessions.length === 0 && (
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <p>No chat history yet</p>
+                <p className="text-sm">Start a new chat to begin</p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Chat messages */}
-        <div 
-          key={updateKey} 
-          className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50 dark:bg-gray-900"
-        >
-          {messages.length === 0 && !isLoading && (
-            <div className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
-              <p className="text-xl font-medium">Welcome to Chat</p>
-              <p className="text-sm mt-2">Start typing to begin a conversation</p>
-            </div>
-          )}
-          {messages.map((message, index) => (
-            <div
-              key={`${message.timestamp}-${index}`}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-2xl rounded-2xl px-4 py-3 ${
-                  message.role === 'user'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white'
-                } shadow-sm`}
-              >
-                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                <p className={`text-xs mt-1 ${
-                  message.role === 'user' ? 'text-indigo-200' : 'text-gray-500 dark:text-gray-400'
-                }`}>
-                  {new Date(message.timestamp).toLocaleTimeString()}
-                </p>
-              </div>
-            </div>
-          ))}
-          {isLoading && (
-            <div className="flex justify-center">
-              <div className="animate-pulse flex space-x-2">
-                <div className="h-2 w-2 bg-gray-400 dark:bg-gray-600 rounded-full"></div>
-                <div className="h-2 w-2 bg-gray-400 dark:bg-gray-600 rounded-full"></div>
-                <div className="h-2 w-2 bg-gray-400 dark:bg-gray-600 rounded-full"></div>
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input form */}
-        <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-          <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto">
-            <div className="flex space-x-4">
-              <input
-                type="text"
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                placeholder="Type your message..."
-                className="flex-1 min-w-0 rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-base bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent disabled:bg-gray-50 dark:disabled:bg-gray-800 disabled:text-gray-500 dark:disabled:text-gray-400"
-                disabled={isLoading}
-              />
-              <button
-                type="submit"
-                disabled={isLoading || !inputMessage.trim()}
-                className="inline-flex items-center px-6 py-2 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {isLoading ? (
-                  <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    Sending...
-                  </span>
-                ) : (
-                  'Send'
+        {/* Main content */}
+        <div className="flex-1 flex flex-col bg-white dark:bg-gray-800">
+          {/* Header */}
+          <div className="h-16 border-b border-gray-200 dark:border-gray-700 px-6 flex items-center justify-between">
+            <h1 className="text-xl font-semibold text-gray-800 dark:text-white">
+              {currentSession ? 'Chat Session' : 'New Chat'}
+            </h1>
+            <div className="flex items-center space-x-4">
+              {renderThemeToggle()}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="flex items-center space-x-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                >
+                  {user?.avatar_url ? (
+                    <img
+                      src={user.avatar_url}
+                      alt={user.full_name}
+                      className="h-8 w-8 rounded-full"
+                    />
+                  ) : (
+                    <UserCircleIcon className="h-8 w-8" />
+                  )}
+                  <span className="text-sm font-medium">{user?.full_name}</span>
+                </button>
+                {isDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 dark:divide-gray-600">
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          router.push('/dashboard');
+                          setIsDropdownOpen(false);
+                        }}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
+                      >
+                        Profile Settings
+                      </button>
+                    </div>
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          handleLogout();
+                          setIsDropdownOpen(false);
+                        }}
+                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-500 hover:bg-gray-50 dark:hover:bg-gray-600"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  </div>
                 )}
-              </button>
+              </div>
             </div>
-          </form>
+          </div>
+
+          {/* Chat messages */}
+          <div 
+            key={updateKey} 
+            className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50 dark:bg-gray-900"
+          >
+            {messages.length === 0 && !isLoading && (
+              <div className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                <p className="text-xl font-medium">Welcome to Chat</p>
+                <p className="text-sm mt-2">Start typing to begin a conversation</p>
+              </div>
+            )}
+            {messages.map((message, index) => (
+              <div
+                key={`${message.timestamp}-${index}`}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-2xl rounded-2xl px-4 py-3 ${
+                    message.role === 'user'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white'
+                  } shadow-sm`}
+                >
+                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  <p className={`text-xs mt-1 ${
+                    message.role === 'user' ? 'text-indigo-200' : 'text-gray-500 dark:text-gray-400'
+                  }`}>
+                    {new Date(message.timestamp).toLocaleTimeString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+            {isLoading && (
+              <div className="flex justify-center">
+                <div className="animate-pulse flex space-x-2">
+                  <div className="h-2 w-2 bg-gray-400 dark:bg-gray-600 rounded-full"></div>
+                  <div className="h-2 w-2 bg-gray-400 dark:bg-gray-600 rounded-full"></div>
+                  <div className="h-2 w-2 bg-gray-400 dark:bg-gray-600 rounded-full"></div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input form */}
+          <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+            <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto">
+              <div className="flex space-x-4">
+                <input
+                  type="text"
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  placeholder="Type your message..."
+                  className="flex-1 min-w-0 rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-base bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent disabled:bg-gray-50 dark:disabled:bg-gray-800 disabled:text-gray-500 dark:disabled:text-gray-400"
+                  disabled={isLoading}
+                />
+                <button
+                  type="submit"
+                  disabled={isLoading || !inputMessage.trim()}
+                  className="inline-flex items-center px-6 py-2 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isLoading ? (
+                    <span className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Sending...
+                    </span>
+                  ) : (
+                    'Send'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
