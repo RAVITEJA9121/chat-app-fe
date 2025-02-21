@@ -6,6 +6,22 @@ import { UserCircleIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
 import { useTheme } from 'next-themes';
 import { SunIcon, MoonIcon } from '@heroicons/react/24/outline';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import type { Components } from 'react-markdown';
+
+type MarkdownProps = {
+  children: string | string[];
+};
+
+type CodeBlockProps = MarkdownProps & {
+  inline?: boolean;
+  className?: string;
+};
+
+type LinkProps = MarkdownProps & {
+  href?: string;
+};
 
 export default function ChatPage() {
   const { user, logout } = useAuth();
@@ -380,12 +396,26 @@ export default function ChatPage() {
                       : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white'
                   } shadow-sm`}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                  <p className={`text-xs mt-1 ${
-                    message.role === 'user' ? 'text-indigo-200' : 'text-gray-500 dark:text-gray-400'
-                  }`}>
-                    {new Date(message.timestamp).toLocaleTimeString()}
-                  </p>
+                  <div className="prose dark:prose-invert max-w-none">
+                    <div className="text-sm whitespace-pre-wrap">
+                      <div className={`${
+                        message.role === 'user'
+                          ? 'prose-a:text-white prose-a:hover:text-indigo-200'
+                          : 'prose-a:text-indigo-600 prose-a:dark:text-indigo-400 prose-a:hover:text-indigo-800 prose-a:dark:hover:text-indigo-300'
+                      }`}>
+                        <ReactMarkdown 
+                          remarkPlugins={[remarkGfm]}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                    <p className={`text-xs mt-1 ${
+                      message.role === 'user' ? 'text-indigo-200' : 'text-gray-500 dark:text-gray-400'
+                    }`}>
+                      {new Date(message.timestamp).toLocaleTimeString()}
+                    </p>
+                  </div>
                 </div>
               </div>
             ))}
