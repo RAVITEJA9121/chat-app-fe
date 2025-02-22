@@ -37,6 +37,9 @@ export default function ChatPage() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLButtonElement>(null);
+  const dropdownMenuRef = useRef<HTMLDivElement>(null);
+  const mobileDropdownRef = useRef<HTMLButtonElement>(null);
+  const mobileDropdownMenuRef = useRef<HTMLDivElement>(null);
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -45,7 +48,15 @@ export default function ChatPage() {
     setMounted(true);
     // Add click outside listener for dropdown
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const isClickInsideDesktopDropdown = 
+        (dropdownRef.current && dropdownRef.current.contains(event.target as Node)) ||
+        (dropdownMenuRef.current && dropdownMenuRef.current.contains(event.target as Node));
+      
+      const isClickInsideMobileDropdown = 
+        (mobileDropdownRef.current && mobileDropdownRef.current.contains(event.target as Node)) ||
+        (mobileDropdownMenuRef.current && mobileDropdownMenuRef.current.contains(event.target as Node));
+
+      if (!isClickInsideDesktopDropdown && !isClickInsideMobileDropdown) {
         setIsDropdownOpen(false);
       }
     };
@@ -380,6 +391,7 @@ export default function ChatPage() {
             <div className="lg:hidden border-t border-gray-200 dark:border-gray-700">
               <div className="p-4">
                 <button
+                  ref={mobileDropdownRef}
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                   className="w-full flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded-lg transition-colors"
                 >
@@ -403,7 +415,10 @@ export default function ChatPage() {
                   />
                 </button>
                 {isDropdownOpen && (
-                  <div className="mt-2 space-y-1">
+                  <div 
+                    ref={mobileDropdownMenuRef}
+                    className="mt-2 space-y-1"
+                  >
                     <button
                       onClick={(e) => handleNavigation(e, '/')}
                       className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
@@ -471,7 +486,10 @@ export default function ChatPage() {
                 
                 {/* Desktop Dropdown Menu */}
                 {isDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 dark:divide-gray-600">
+                  <div 
+                    ref={dropdownMenuRef}
+                    className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 dark:divide-gray-600"
+                  >
                     <div className="py-1">
                       <button
                         onClick={(e) => handleNavigation(e, '/')}
