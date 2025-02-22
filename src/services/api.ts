@@ -190,29 +190,65 @@ export const chatAPI = {
   },
 
   // Send a message to chat
-  sendMessage: async (user_query: string, session_id?: string): Promise<ChatResponse> => {
+  sendMessage: async (message: string, sessionId?: string, onChunk?: (chunk: string) => void) => {
     try {
-      console.log('Sending chat message:', { user_query, session_id });
-      const response = await api.post('/api/v1/chat/', {
-        user_query,
-        ...(session_id && { session_id }),
+      const response = await fetch(`${API_BASE_URL}/api/v1/chat/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Token ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          user_query: message,
+          session_id: sessionId,
+        }),
       });
-      
-      console.log('Chat response raw:', response);
-      console.log('Chat response data:', response.data);
 
-      // Validate response data
-      if (!response.data || typeof response.data.response !== 'string') {
-        console.error('Invalid response format:', response.data);
-        throw new Error('Invalid response format from server');
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
       }
 
-      return {
-        session_id: response.data.session_id,
-        response: response.data.response,
-      };
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No reader available');
+      }
+
+      let completeResponse = '';
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) {
+          break;
+        }
+        
+        // Convert the chunk to text
+        const chunk = new TextDecoder().decode(value);
+        completeResponse += chunk;
+        
+        // Call the callback with the new chunk if provided
+        if (onChunk) {
+          onChunk(chunk);
+        }
+      }
+
+      // Parse the complete response
+      try {
+        const jsonResponse = JSON.parse(completeResponse);
+        return {
+          response: jsonResponse.response,
+          session_id: jsonResponse.session_id,
+        };
+      } catch (error) {
+        // If JSON parsing fails, return the raw response
+        return {
+          response: completeResponse,
+          session_id: sessionId,
+        };
+      }
     } catch (error) {
-      console.error('Failed to send message:', error);
+      console.error('Error in sendMessage:', error);
       throw error;
     }
   },

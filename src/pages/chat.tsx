@@ -31,6 +31,8 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [streamingMessage, setStreamingMessage] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
   const [updateKey, setUpdateKey] = useState(0);
   const [brightness, setBrightness] = useState(0);
   const [mounted, setMounted] = useState(false);
@@ -152,6 +154,8 @@ export default function ChatPage() {
 
     try {
       setIsLoading(true);
+      setIsStreaming(true);
+      setStreamingMessage('');
       
       // Add user message immediately
       const userMessage = {
@@ -160,16 +164,17 @@ export default function ChatPage() {
         timestamp: new Date().toISOString(),
       };
       setMessages(prev => [...prev, userMessage]);
-      setUpdateKey(key => key + 1);
 
-      // Send message to API
-      const response = await chatAPI.sendMessage(messageText, currentSession || undefined);
+      // Send message to API with streaming handler
+      const response = await chatAPI.sendMessage(
+        messageText, 
+        currentSession || undefined,
+        (chunk) => {
+          setStreamingMessage(prev => prev + chunk);
+        }
+      );
 
-      if (!response || !response.response) {
-        throw new Error('Invalid response format from API');
-      }
-
-      // Add assistant response
+      // Add the complete assistant response
       const assistantMessage = {
         content: response.response,
         role: 'assistant' as const,
@@ -177,7 +182,6 @@ export default function ChatPage() {
       };
       
       setMessages(prev => [...prev, assistantMessage]);
-      setUpdateKey(key => key + 1);
 
       // Update session if it's a new chat
       if (!currentSession && response.session_id) {
@@ -190,10 +194,11 @@ export default function ChatPage() {
       
       // Remove the user message if the API call failed
       setMessages(prev => prev.slice(0, -1));
-      setUpdateKey(key => key + 1);
       setInputMessage(messageText); // Restore the message to the input
     } finally {
       setIsLoading(false);
+      setIsStreaming(false);
+      setStreamingMessage('');
     }
   };
 
@@ -319,7 +324,7 @@ export default function ChatPage() {
   return (
     <>
       <div className="brightness-overlay" />
-      <div className="h-screen flex bg-gray-50 dark:bg-gray-900">
+      <div className="h-screen flex bg-gray-50 dark:bg-gray-900 overflow-hidden">
         {/* Mobile sidebar backdrop */}
         {isSidebarOpen && (
           <div
@@ -445,9 +450,9 @@ export default function ChatPage() {
         </div>
 
         {/* Main content */}
-        <div className="flex-1 flex flex-col bg-white dark:bg-gray-800 min-w-0">
-          {/* Header */}
-          <div className="h-16 border-b border-gray-200 dark:border-gray-700 px-4 flex items-center justify-between">
+        <div className="flex-1 flex flex-col bg-white dark:bg-gray-800 min-w-0 h-screen overflow-hidden">
+          {/* Fixed Header */}
+          <div className="h-16 border-b border-gray-200 dark:border-gray-700 px-4 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center">
               <button
                 onClick={() => setIsSidebarOpen(true)}
@@ -518,12 +523,12 @@ export default function ChatPage() {
             </div>
           </div>
 
-          {/* Chat messages */}
+          {/* Scrollable Messages Container */}
           <div 
             key={updateKey} 
             className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900"
           >
-            {messages.length === 0 && !isLoading && (
+            {messages.length === 0 && !isLoading && !isStreaming && (
               <div className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
                 <p className="text-xl font-medium">Welcome to Chat</p>
                 <p className="text-sm mt-2">Start typing to begin a conversation</p>
@@ -564,7 +569,23 @@ export default function ChatPage() {
                 </div>
               </div>
             ))}
-            {isLoading && (
+            {/* Streaming message */}
+            {isStreaming && streamingMessage && (
+              <div className="flex justify-start">
+                <div className="max-w-2xl rounded-2xl px-4 py-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white shadow-sm">
+                  <div className="prose dark:prose-invert max-w-none">
+                    <div className="text-sm whitespace-pre-wrap">
+                      <div className="prose-a:text-indigo-600 prose-a:dark:text-indigo-400 prose-a:hover:text-indigo-800 prose-a:dark:hover:text-indigo-300">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {streamingMessage}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            {(isLoading || isStreaming) && !streamingMessage && (
               <div className="flex justify-center">
                 <div className="animate-pulse flex space-x-2">
                   <div className="h-2 w-2 bg-gray-400 dark:bg-gray-600 rounded-full"></div>
@@ -576,8 +597,8 @@ export default function ChatPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input form */}
-          <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+          {/* Fixed Input Form at Bottom */}
+          <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 flex-shrink-0">
             <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto">
               <div className="flex space-x-2">
                 <input
