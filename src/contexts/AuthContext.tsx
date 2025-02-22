@@ -58,8 +58,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    await authAPI.logout();
-    setUser(null);
+    console.log('AuthContext: Starting logout process');
+    try {
+      console.log('AuthContext: Making logout API call');
+      await authAPI.logout();
+      console.log('AuthContext: Logout API call successful');
+    } catch (error: any) {
+      console.error('AuthContext: Logout API call failed:', {
+        name: error?.name,
+        message: error?.message,
+        stack: error?.stack,
+        response: error?.response?.data
+      });
+    } finally {
+      console.log('AuthContext: Clearing local storage and user state');
+      localStorage.clear();
+      setUser(null);
+      console.log('AuthContext: Logout cleanup completed');
+    }
   };
 
   const register = async (userData: {

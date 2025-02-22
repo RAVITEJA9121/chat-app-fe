@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import { chatAPI, type Session, type ChatMessage } from '@/services/api';
-import { UserCircleIcon } from '@heroicons/react/24/outline';
+import { UserCircleIcon, Bars3Icon, XMarkIcon, PlusIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
 import { useTheme } from 'next-themes';
 import { SunIcon, MoonIcon } from '@heroicons/react/24/outline';
@@ -36,8 +36,9 @@ export default function ChatPage() {
   const [mounted, setMounted] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLButtonElement>(null);
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Handle mounting
   useEffect(() => {
@@ -112,9 +113,23 @@ export default function ChatPage() {
     }
   };
 
+  // Function to close sidebar
+  const closeSidebar = () => {
+    setIsSidebarOpen(false);
+  };
+
+  // Modify handleSessionClick to close sidebar on mobile after selection
   const handleSessionClick = (sessionId: string) => {
     setMessages([]); // Reset messages before loading new session
     loadChatHistory(sessionId);
+    closeSidebar(); // Close sidebar on mobile after selecting a session
+  };
+
+  // Modify handleNewChat function
+  const handleNewChat = () => {
+    setCurrentSession(null);
+    setMessages([]);
+    closeSidebar();
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -171,13 +186,48 @@ export default function ChatPage() {
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogout = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     try {
-      await logout();
-      router.replace('/');  // Using replace to prevent back navigation to the chat page
-    } catch (error) {
-      console.error('Failed to logout:', error);
-      toast.error('Failed to logout');
+      setIsLoading(true);
+      setIsDropdownOpen(false);
+      
+      if (isSidebarOpen) {
+        closeSidebar();
+      }
+      
+      await logout(); // This should be your API logout call from AuthContext
+      
+      // Clear any local storage data
+      localStorage.clear();
+      
+      // Use router for navigation instead of direct window.location
+      router.push('/');
+      
+    } catch (error: any) {
+      console.error('Logout error:', error);
+      toast.error('Failed to logout. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleNavigation = (e: React.MouseEvent, path: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    try {
+      setIsDropdownOpen(false);
+      if (isSidebarOpen) {
+        closeSidebar();
+      }
+      // Use router for navigation instead of direct window.location
+      router.push(path);
+    } catch (error: any) {
+      console.error('Navigation error:', error);
+      toast.error('Navigation failed. Please try again.');
     }
   };
 
@@ -259,78 +309,150 @@ export default function ChatPage() {
     <>
       <div className="brightness-overlay" />
       <div className="h-screen flex bg-gray-50 dark:bg-gray-900">
+        {/* Mobile sidebar backdrop */}
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-gray-600 bg-opacity-75 z-20 lg:hidden"
+            onClick={closeSidebar}
+          />
+        )}
+
         {/* Sidebar */}
-        <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Chat History</h2>
-            <button
-              onClick={() => {
-                setCurrentSession(null);
-                setMessages([]);
-              }}
-              className="px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 transition-colors"
-            >
-              New Chat
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            {sessions.map((session) => (
+        <div
+          className={`fixed inset-y-0 left-0 z-30 w-80 bg-white dark:bg-gray-800 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${
+            isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          <div className="h-full flex flex-col">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Chat History</h2>
               <button
-                key={session.session_id}
-                onClick={() => handleSessionClick(session.session_id)}
-                className={`w-full p-4 text-left rounded-lg transition-colors ${
-                  currentSession === session.session_id
-                    ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700'
-                    : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300'
-                }`}
+                onClick={closeSidebar}
+                className="lg:hidden p-2 rounded-md text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300"
               >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium line-clamp-2">{session.first_message}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      {new Date(session.created_at).toLocaleString(undefined, {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </p>
-                  </div>
-                  <button
-                    onClick={(e) => handleDeleteSession(session.session_id, e)}
-                    className="ml-2 p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-500 rounded focus:outline-none"
-                    title="Delete session"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
+                <XMarkIcon className="h-6 w-6" />
               </button>
-            ))}
-            {sessions.length === 0 && (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                <p>No chat history yet</p>
-                <p className="text-sm">Start a new chat to begin</p>
+            </div>
+
+            {/* Chat Sessions */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              <button
+                onClick={handleNewChat}
+                className="w-full flex items-center justify-center px-4 py-3 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 transition-colors mb-4"
+              >
+                <PlusIcon className="h-5 w-5 mr-2" />
+                New Chat
+              </button>
+              {sessions.map((session) => (
+                <button
+                  key={session.session_id}
+                  onClick={() => handleSessionClick(session.session_id)}
+                  className={`w-full p-4 text-left rounded-lg transition-colors ${
+                    currentSession === session.session_id
+                      ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700'
+                      : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium line-clamp-2">{session.first_message}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {new Date(session.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteSession(session.session_id, e);
+                      }}
+                      className="ml-2 p-1 text-gray-400 hover:text-red-600 rounded"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Mobile User Profile Section - at bottom */}
+            <div className="lg:hidden border-t border-gray-200 dark:border-gray-700">
+              <div className="p-4">
+                <button
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="w-full flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded-lg transition-colors"
+                >
+                  {user?.avatar_url ? (
+                    <img
+                      src={user.avatar_url}
+                      alt={user.full_name}
+                      className="h-10 w-10 rounded-full"
+                    />
+                  ) : (
+                    <UserCircleIcon className="h-10 w-10 text-gray-400" />
+                  )}
+                  <div className="flex-1 text-left">
+                    <p className="font-medium text-gray-900 dark:text-white">{user?.full_name}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</p>
+                  </div>
+                  <ChevronUpIcon 
+                    className={`h-5 w-5 text-gray-400 transition-transform duration-200 ${
+                      isDropdownOpen ? 'transform rotate-180' : ''
+                    }`}
+                  />
+                </button>
+                {isDropdownOpen && (
+                  <div className="mt-2 space-y-1">
+                    <button
+                      onClick={(e) => handleNavigation(e, '/')}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                    >
+                      Home
+                    </button>
+                    <button
+                      onClick={(e) => handleNavigation(e, '/dashboard')}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                    >
+                      Profile Settings
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
 
         {/* Main content */}
-        <div className="flex-1 flex flex-col bg-white dark:bg-gray-800">
+        <div className="flex-1 flex flex-col bg-white dark:bg-gray-800 min-w-0">
           {/* Header */}
-          <div className="h-16 border-b border-gray-200 dark:border-gray-700 px-6 flex items-center justify-between">
-            <h1 className="text-xl font-semibold text-gray-800 dark:text-white">
-              {currentSession ? 'Chat Session' : 'New Chat'}
-            </h1>
+          <div className="h-16 border-b border-gray-200 dark:border-gray-700 px-4 flex items-center justify-between">
+            <div className="flex items-center">
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="lg:hidden p-2 mr-2 rounded-md text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300"
+              >
+                <Bars3Icon className="h-6 w-6" />
+              </button>
+              <h1 className="text-xl font-semibold text-gray-800 dark:text-white">
+                {currentSession ? 'Chat Session' : 'New Chat'}
+              </h1>
+            </div>
             <div className="flex items-center space-x-4">
               {renderThemeToggle()}
-              <div className="relative" ref={dropdownRef}>
+              
+              {/* Desktop User Profile */}
+              <div className="hidden lg:block relative">
                 <button
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex items-center space-x-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                  className="flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded-lg transition-colors"
+                  ref={dropdownRef}
                 >
                   {user?.avatar_url ? (
                     <img
@@ -339,30 +461,35 @@ export default function ChatPage() {
                       className="h-8 w-8 rounded-full"
                     />
                   ) : (
-                    <UserCircleIcon className="h-8 w-8" />
+                    <UserCircleIcon className="h-8 w-8 text-gray-400" />
                   )}
-                  <span className="text-sm font-medium">{user?.full_name}</span>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{user?.full_name}</span>
+                  <ChevronDownIcon className={`h-5 w-5 text-gray-400 transition-transform duration-200 ${
+                    isDropdownOpen ? 'transform rotate-180' : ''
+                  }`} />
                 </button>
+                
+                {/* Desktop Dropdown Menu */}
                 {isDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 dark:divide-gray-600">
                     <div className="py-1">
                       <button
-                        onClick={() => {
-                          router.push('/dashboard');
-                          setIsDropdownOpen(false);
-                        }}
-                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
+                        onClick={(e) => handleNavigation(e, '/')}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
+                      >
+                        Home
+                      </button>
+                      <button
+                        onClick={(e) => handleNavigation(e, '/dashboard')}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
                       >
                         Profile Settings
                       </button>
                     </div>
                     <div className="py-1">
                       <button
-                        onClick={() => {
-                          handleLogout();
-                          setIsDropdownOpen(false);
-                        }}
-                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-500 hover:bg-gray-50 dark:hover:bg-gray-600"
+                        onClick={handleLogout}
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-600"
                       >
                         Logout
                       </button>
@@ -376,7 +503,7 @@ export default function ChatPage() {
           {/* Chat messages */}
           <div 
             key={updateKey} 
-            className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50 dark:bg-gray-900"
+            className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900"
           >
             {messages.length === 0 && !isLoading && (
               <div className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
@@ -434,7 +561,7 @@ export default function ChatPage() {
           {/* Input form */}
           <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
             <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto">
-              <div className="flex space-x-4">
+              <div className="flex space-x-2">
                 <input
                   type="text"
                   value={inputMessage}
@@ -446,18 +573,17 @@ export default function ChatPage() {
                 <button
                   type="submit"
                   disabled={isLoading || !inputMessage.trim()}
-                  className="inline-flex items-center px-6 py-2 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {isLoading ? (
                     <span className="flex items-center">
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      Sending...
                     </span>
                   ) : (
-                    'Send'
+                    <span>Send</span>
                   )}
                 </button>
               </div>

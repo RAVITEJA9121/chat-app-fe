@@ -65,8 +65,18 @@ export const authAPI = {
     return response.data;
   },
   logout: async () => {
-    await api.post('/api/v1/logout/');
-    localStorage.removeItem('token');
+    try {
+      console.log('API: Making logout request');
+      const response = await api.post('/api/v1/logout/');
+      console.log('API: Logout request successful', response.data);
+      localStorage.removeItem('token');
+      return response.data;
+    } catch (error) {
+      console.error('API: Logout request failed', error);
+      // Still remove token even if API call fails
+      localStorage.removeItem('token');
+      throw error;
+    }
   },
   register: async (userData: {
     email: string;
