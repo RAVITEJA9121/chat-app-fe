@@ -200,7 +200,7 @@ export const chatAPI = {
         },
         body: JSON.stringify({
           user_query: message,
-          session_id: sessionId,
+          session_id: sessionId || null,  // Explicitly send null if no sessionId
         }),
       });
 
@@ -238,7 +238,7 @@ export const chatAPI = {
         const jsonResponse = JSON.parse(completeResponse);
         return {
           response: jsonResponse.response,
-          session_id: jsonResponse.session_id,
+          session_id: jsonResponse.session_id || sessionId, // Fallback to existing sessionId if not provided in response
         };
       } catch (error) {
         // If JSON parsing fails, return the raw response

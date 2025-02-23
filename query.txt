@@ -1,0 +1,11 @@
+Request:
+curl -X GET http://localhost:8000/api/v1/documents/ \                      
+     -H "Authorization: Token ee4d5c5e63809df149ccaea0aacb60bd8cd68a47" \
+     -H "Content-Type: application/json"
+RESPONSE:
+{"count":0,"next":null,"previous":null,"results":[]}     
+
+
+The above is the request and response to list all the documents the user has, 
+
+I want to disply this data in the 

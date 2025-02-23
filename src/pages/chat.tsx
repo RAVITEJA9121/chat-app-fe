@@ -183,10 +183,11 @@ export default function ChatPage() {
       
       setMessages(prev => [...prev, assistantMessage]);
 
-      // Update session if it's a new chat
-      if (!currentSession && response.session_id) {
+      // Update session if it's a new chat or if we have a new session_id
+      if (response.session_id) {
         setCurrentSession(response.session_id);
-        await loadSessions(); // Refresh sessions list
+        // Immediately load sessions to update the sidebar
+        await loadSessions();
       }
     } catch (error) {
       console.error('Error in handleSendMessage:', error);
