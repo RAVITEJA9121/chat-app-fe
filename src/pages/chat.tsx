@@ -160,37 +160,66 @@ export default function ChatPage() {
         timestamp: new Date().toISOString(),
       };
       setMessages(prev => [...prev, userMessage]);
-      setUpdateKey(key => key + 1);
 
-      // Send message to API
-      const response = await chatAPI.sendMessage(messageText, currentSession || undefined);
-
-      if (!response || !response.response) {
-        throw new Error('Invalid response format from API');
-      }
-
-      // Add assistant response
+      // Create assistant message placeholder
       const assistantMessage = {
-        content: response.response,
+        content: '',
         role: 'assistant' as const,
         timestamp: new Date().toISOString(),
       };
-      
       setMessages(prev => [...prev, assistantMessage]);
-      setUpdateKey(key => key + 1);
 
-      // Update session if it's a new chat
-      if (!currentSession && response.session_id) {
-        setCurrentSession(response.session_id);
+      // Send message to API
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/chat/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Token ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          user_query: messageText,
+          session_id: currentSession || null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      // Get new session ID from headers if this is a new chat
+      const newSessionId = response.headers.get('session-id');
+      if (!currentSession && newSessionId) {
+        setCurrentSession(newSessionId);
         await loadSessions(); // Refresh sessions list
       }
+
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('Response body is not readable');
+      }
+
+      let accumulatedContent = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        // Convert the chunk to text
+        const chunk = new TextDecoder().decode(value);
+        accumulatedContent += chunk;
+
+        // Update the assistant message with accumulated content
+        setMessages(prev => prev.map((msg, index) => 
+          index === prev.length - 1 ? { ...msg, content: accumulatedContent } : msg
+        ));
+      }
+
     } catch (error) {
       console.error('Error in handleSendMessage:', error);
       toast.error('Failed to send message. Please try again.');
       
-      // Remove the user message if the API call failed
+      // Remove the assistant message if the API call failed
       setMessages(prev => prev.slice(0, -1));
-      setUpdateKey(key => key + 1);
       setInputMessage(messageText); // Restore the message to the input
     } finally {
       setIsLoading(false);

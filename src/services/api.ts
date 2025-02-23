@@ -193,23 +193,33 @@ export const chatAPI = {
   sendMessage: async (user_query: string, session_id?: string): Promise<ChatResponse> => {
     try {
       console.log('Sending chat message:', { user_query, session_id });
-      const response = await api.post('/api/v1/chat/', {
-        user_query,
-        ...(session_id && { session_id }),
-      });
       
-      console.log('Chat response raw:', response);
-      console.log('Chat response data:', response.data);
+      const response = await fetch(`${API_BASE_URL}/api/v1/chat/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Token ${localStorage.getItem('token')}`,
+          ...(session_id && { 'session-id': session_id }),
+        },
+        body: JSON.stringify({ user_query }),
+      });
 
-      // Validate response data
-      if (!response.data || typeof response.data.response !== 'string') {
-        console.error('Invalid response format:', response.data);
-        throw new Error('Invalid response format from server');
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      // Get session ID from headers
+      const newSessionId = response.headers.get('session-id');
+      
+      // Create a reader for the streaming response
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('Response body is not readable');
       }
 
       return {
-        session_id: response.data.session_id,
-        response: response.data.response,
+        response: '',  // This will be handled by the streaming logic in the component
+        session_id: newSessionId || '',
       };
     } catch (error) {
       console.error('Failed to send message:', error);
