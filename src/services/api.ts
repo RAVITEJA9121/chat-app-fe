@@ -192,61 +192,35 @@ export const chatAPI = {
   // Send a message to chat
   sendMessage: async (message: string, sessionId?: string, onChunk?: (chunk: string) => void) => {
     try {
+      console.log('Sending chat message:', { user_query, session_id });
+      
       const response = await fetch(`${API_BASE_URL}/api/v1/chat/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Token ${localStorage.getItem('token')}`,
+          ...(session_id && { 'session-id': session_id }),
         },
-        body: JSON.stringify({
-          user_query: message,
-          session_id: sessionId || null,  // Explicitly send null if no sessionId
-        }),
+        body: JSON.stringify({ user_query }),
       });
 
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
 
-      // Handle streaming response
+      // Get session ID from headers
+      const newSessionId = response.headers.get('session-id');
+      
+      // Create a reader for the streaming response
       const reader = response.body?.getReader();
       if (!reader) {
-        throw new Error('No reader available');
+        throw new Error('Response body is not readable');
       }
 
-      let completeResponse = '';
-      
-      while (true) {
-        const { done, value } = await reader.read();
-        
-        if (done) {
-          break;
-        }
-        
-        // Convert the chunk to text
-        const chunk = new TextDecoder().decode(value);
-        completeResponse += chunk;
-        
-        // Call the callback with the new chunk if provided
-        if (onChunk) {
-          onChunk(chunk);
-        }
-      }
-
-      // Parse the complete response
-      try {
-        const jsonResponse = JSON.parse(completeResponse);
-        return {
-          response: jsonResponse.response,
-          session_id: jsonResponse.session_id || sessionId, // Fallback to existing sessionId if not provided in response
-        };
-      } catch (error) {
-        // If JSON parsing fails, return the raw response
-        return {
-          response: completeResponse,
-          session_id: sessionId,
-        };
-      }
+      return {
+        response: '',  // This will be handled by the streaming logic in the component
+        session_id: newSessionId || '',
+      };
     } catch (error) {
       console.error('Error in sendMessage:', error);
       throw error;
