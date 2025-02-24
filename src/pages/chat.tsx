@@ -173,7 +173,6 @@ export default function ChatPage() {
       };
       setMessages(prev => [...prev, assistantMessage]);
 
-      // Send message to API
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/chat/`, {
         method: 'POST',
         headers: {
@@ -197,25 +196,59 @@ export default function ChatPage() {
         await loadSessions(); // Refresh sessions list
       }
 
-      // Handle streaming response
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('Response body is not readable');
+      if (!response.body) {
+        throw new Error('No response body');
       }
 
-      let accumulatedContent = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        // Convert the chunk to text
-        const chunk = new TextDecoder().decode(value);
-        accumulatedContent += chunk;
+      // Set up streaming
+      const stream = response.body;
+      const reader = stream.getReader();
+      const decoder = new TextDecoder();
 
-        // Update the assistant message with accumulated content
-        setMessages(prev => prev.map((msg, index) => 
-          index === prev.length - 1 ? { ...msg, content: accumulatedContent } : msg
-        ));
+      let buffer = '';
+      const processText = (text: string) => {
+        setMessages(prev => {
+          const newMessages = [...prev];
+          const lastMessage = newMessages[newMessages.length - 1];
+          if (lastMessage && lastMessage.role === 'assistant') {
+            lastMessage.content = lastMessage.content + text;
+          }
+          return newMessages;
+        });
+      };
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          
+          if (done) {
+            // Process any remaining text in the buffer
+            if (buffer) {
+              processText(buffer);
+            }
+            break;
+          }
+
+          // Decode the current chunk
+          const chunk = decoder.decode(value, { stream: true });
+          buffer += chunk;
+
+          // Process complete lines from the buffer
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || ''; // Keep the last incomplete line in the buffer
+
+          // Process each complete line
+          for (const line of lines) {
+            if (line.trim()) {
+              processText(line + '\n');
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error reading stream:', error);
+        throw error;
+      } finally {
+        reader.releaseLock();
       }
 
     } catch (error) {
