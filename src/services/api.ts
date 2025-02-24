@@ -192,16 +192,21 @@ export const chatAPI = {
   // Send a message to chat
   sendMessage: async (message: string, sessionId?: string, onChunk?: (chunk: string) => void) => {
     try {
-      console.log('Sending chat message:', { user_query, session_id });
+      console.log('Sending chat message:', { 
+        user_query: message,
+        session_id: sessionId
+      });
       
       const response = await fetch(`${API_BASE_URL}/api/v1/chat/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Token ${localStorage.getItem('token')}`,
-          ...(session_id && { 'session-id': session_id }),
         },
-        body: JSON.stringify({ user_query }),
+        body: JSON.stringify({
+          user_query: message,
+          session_id: sessionId || null,
+        }),
       });
 
       if (!response.ok) {
@@ -211,18 +216,12 @@ export const chatAPI = {
       // Get session ID from headers
       const newSessionId = response.headers.get('session-id');
       
-      // Create a reader for the streaming response
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('Response body is not readable');
-      }
-
       return {
-        response: '',  // This will be handled by the streaming logic in the component
+        response: '', // Will be handled by streaming logic in component
         session_id: newSessionId || '',
       };
     } catch (error) {
-      console.error('Error in sendMessage:', error);
+      console.error('Failed to send message:', error);
       throw error;
     }
   },
